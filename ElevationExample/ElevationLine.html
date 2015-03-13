@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Elevation Profile</title>
+
+
+
+<!-- LOAD LEAFLET.JS MAPPING LIBRARY	-->
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+<script src="chart.js"></script>
+
+<!-- LOAD DRAWING PLUGIN -->	
+<link rel="stylesheet" href="Draw/dist/leaflet.draw.css" />
+<script src="Draw/src/Leaflet.draw.js"></script>
+<script src="Draw/src/edit/handler/Edit.Poly.js"></script>
+<script src="Draw/src/edit/handler/Edit.SimpleShape.js"></script>
+<script src="Draw/src/edit/handler/Edit.Circle.js"></script>
+<script src="Draw/src/edit/handler/Edit.Rectangle.js"></script>
+<script src="Draw/src/draw/handler/Draw.Feature.js"></script>
+<script src="Draw/src/draw/handler/Draw.Polyline.js"></script>
+<script src="Draw/src/draw/handler/Draw.Polygon.js"></script>
+<script src="Draw/src/draw/handler/Draw.SimpleShape.js"></script>
+<script src="Draw/src/draw/handler/Draw.Rectangle.js"></script>
+<script src="Draw/src/draw/handler/Draw.Circle.js"></script>
+<script src="Draw/src/draw/handler/Draw.Marker.js"></script>
+<script src="Draw/src/ext/LatLngUtil.js"></script>
+<script src="Draw/src/ext/GeometryUtil.js"></script>
+<script src="Draw/src/ext/LineUtil.Intersect.js"></script>
+<script src="Draw/src/ext/Polyline.Intersect.js"></script>
+<script src="Draw/src/ext/Polygon.Intersect.js"></script>
+<script src="Draw/src/Control.Draw.js"></script>
+<script src="Draw/src/Tooltip.js"></script>
+<script src="Draw/src/Toolbar.js"></script>
+<script src="Draw/src/draw/DrawToolbar.js"></script>
+<script src="Draw/src/edit/EditToolbar.js"></script>
+<script src="Draw/src/edit/handler/EditToolbar.Edit.js"></script>
+<script src="Draw/src/edit/handler/EditToolbar.Delete.js"></script>
+
+
+
+
+
+<script src="http://api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.4.0/turf.min.js"></script>
+	
+	
+<style>
+
+html, body {
+        width : 100%;
+        height : 100%;
+     		   }
+#map {
+        width : 70%;
+        height : 80%;
+     		   }
+#data {
+        width : 100%;
+        height : 20%;
+     		   }
+
+</style>
+
+</head>
+<body>
+<canvas id="data">dasas</canvas>
+<div id="map"></div>
+
+<script>
+
+var points=[];
+var l=[];
+
+var map = L.map('map').setView([35.10418,-106.62987], 12); 
+var tiles = L.tileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+var label=0;
+var data;
+var myBarChart;
+
+var drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+
+		var drawControl = new L.Control.Draw({
+			draw: {
+				marker: false,
+				position: 'topleft',
+				polygon: false,
+				polyline: {
+					metric: false,
+					shapeOptions:{color:'green',opacity:1}
+					  },
+				circle:false,
+				rectangle: false
+			},
+			edit: {
+				featureGroup: drawnItems,
+				edit: false
+			}
+		});
+		map.addControl(drawControl);
+
+		map.on('draw:created', function (e) {
+			var type = e.layerType,
+				layer = e.layer;
+
+			
+			if (type === 'polyline') {
+				drawLine=layer.getLatLngs();
+				
+				
+				for(var x=0;x<drawLine.length;x++){
+					a=L.marker([drawLine[x].lat,drawLine[x].lng]);
+					var b=a.toGeoJSON();
+					var buffered = turf.buffer(b,0.01,"miles");
+					var result = turf.featurecollection(buffered.features.concat(b));
+					var g='{"rings":'+JSON.stringify(buffered.features[0].geometry.coordinates)+'}';
+
+					howhigh(g);
+					
+				}//end for
+				
+				
+			}
+
+			drawnItems.addLayer(layer);
+			
+		});
+
+
+
+
+function howhigh(g){
+
+
+var url="http://coagisweb.cabq.gov/arcgis/rest/services/public/contours/MapServer/0/query";
+
+				
+				
+var params="f=json&outSR=4326&outFields=*&geometryType=esriGeometryPolygon&spatialRel=esriSpatialRelIntersects&inSR=4326&geometry="+g;
+
+		var http = new XMLHttpRequest();
+
+		http.open("POST", url, true);
+		
+
+		
+		http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		http.onreadystatechange = function() {//Call a function when the state changes.
+		if(http.readyState == 4 && http.status == 200) {
+			
+				var d=JSON.parse(http.responseText);
+				points.push(d.features[0].attributes.ELEV);
+				l.push(label);
+				label=label+1;
+				drawChart();
+				
+		}
+	}
+	http.send(params);
+
+
+
+}//howhigh
+
+
+
+
+
+
+function drawChart(){
+
+data={
+labels: l,
+    datasets: [
+                {
+            label: "$",
+            fillColor: "rgba(151,187,205,0.5)",
+            strokeColor: "rgba(151,187,205,0.8)",
+            highlightFill: "rgba(151,187,205,0.75)",
+            highlightStroke: "rgba(151,187,205,1)",
+            
+
+		data: points
+  }
+    ]
+};
+
+console.log(l);
+console.log(points);
+var ctx = document.getElementById("data").getContext("2d");
+
+myBarChart = new Chart(ctx).Bar(data, {scaleShowGridLines : true,responsive:false,showTooltips:false,scaleBeginAtZero : false,barValueSpacing : .5});
+
+}
+
+</script>
+
+
+
+
+
+
+</body>
+</html>
+

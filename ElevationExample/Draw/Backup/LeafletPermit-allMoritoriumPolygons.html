@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+  <head>
+<title>DMD Permit Application</title>
+    
+	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+	<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+	
+	<script src="http://cdn-geoweb.s3.amazonaws.com/esri-leaflet/0.0.1-beta.5/esri-leaflet.js"></script>
+	
+	<script src="OSMBuildings-Leaflet.js"></script>
+
+	<script src="l.control.geosearch.js"></script>
+	<script src="l.geosearch.provider.openstreetmap.js"></script>
+	<link rel="stylesheet" type="text/css" href="l.geosearch.css">
+	<link rel="stylesheet" href="dist/leaflet.draw.css" />
+	
+	<script src="src/Leaflet.draw.js"></script>
+	<script src="src/edit/handler/Edit.Poly.js"></script>
+	<script src="src/edit/handler/Edit.SimpleShape.js"></script>
+	<script src="src/edit/handler/Edit.Circle.js"></script>
+	<script src="src/edit/handler/Edit.Rectangle.js"></script>
+	<script src="src/draw/handler/Draw.Feature.js"></script>
+	<script src="src/draw/handler/Draw.Polyline.js"></script>
+	<script src="src/draw/handler/Draw.Polygon.js"></script>
+	<script src="src/draw/handler/Draw.SimpleShape.js"></script>
+	<script src="src/draw/handler/Draw.Rectangle.js"></script>
+	<script src="src/draw/handler/Draw.Circle.js"></script>
+	<script src="src/draw/handler/Draw.Marker.js"></script>
+	<script src="src/ext/LatLngUtil.js"></script>
+	<script src="src/ext/GeometryUtil.js"></script>
+	<script src="src/ext/LineUtil.Intersect.js"></script>
+	<script src="src/ext/Polyline.Intersect.js"></script>
+	<script src="src/ext/Polygon.Intersect.js"></script>
+	<script src="src/Control.Draw.js"></script>
+	<script src="src/Tooltip.js"></script>
+	<script src="src/Toolbar.js"></script>
+	<script src="src/draw/DrawToolbar.js"></script>
+	<script src="src/edit/EditToolbar.js"></script>
+	<script src="src/edit/handler/EditToolbar.Edit.js"></script>
+	<script src="src/edit/handler/EditToolbar.Delete.js"></script>
+
+
+<style>
+      html, body,  #map {
+        width : 100%;
+        height : 100%;
+      }
+</style>
+</head>
+ 
+
+
+<body>
+<div id="map"></div>
+<script>
+
+//VARIABLES
+var reverse;       
+var x,y,addr,p;
+var link='<a href="http://www.cabq.gov/municipaldevelopment">DMD</a>';
+var map = L.map('map').setView([35.10418,-106.62987], 13); 
+
+var tiles = L.tileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:'Open Street Map. '+link+' Paul Crickard'}).addTo(map);
+var osmb = new OSMBuildings(map).loadData();
+var parcelurl = "http://dmdview/ArcGIS/rest/services/EdgesoftParcels/MapServer";
+var parcels = L.esri.dynamicMapLayer(parcelurl); 
+
+var barricadeurl = "http://coagisweb.cabq.gov/arcgis/rest/services/public/trafficbarricades/MapServer";
+var barricades = L.esri.dynamicMapLayer(barricadeurl);
+
+var netcurrurl = "http://dmdview/ArcGIS/rest/services/EdgesoftNetcurr/MapServer";
+var netcurr = L.esri.dynamicMapLayer(netcurrurl);  
+
+var moritoriumurl = "http://dmdview/ArcGIS/rest/services/edgesoftmoritorium3857/MapServer";
+var moritorium = L.esri.dynamicMapLayer(moritoriumurl,{opacity:.7});          
+         
+//var base = L.layerGroup([parcels]);
+var streets = L.layerGroup([netcurr]);
+var b = L.layerGroup([barricades]);
+var m = L.layerGroup([moritorium]);
+
+
+
+
+//OVERLAY
+
+var overlayMaps = {
+    "Buildings": osmb,
+    "Roads": streets,
+    "Barricades":b,
+    "Moritorium":m
+};
+
+L.control.layers(null, overlayMaps).addTo(map);
+ 
+
+
+//GEOCODING
+ 
+var x = new L.Control.GeoSearch({
+    provider: new L.GeoSearch.Provider.OpenStreetMap(),
+    position: 'topcenter',
+    showMarker: false
+   
+}).addTo(map);
+
+
+
+
+
+
+//DRAW - ERROR CHECKING MORITORIUM
+var drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+
+		var drawControl = new L.Control.Draw({
+			draw: {
+				position: 'topleft',
+				polygon: false,
+				polyline: {
+					metric: false
+				},
+				circle:false,
+				rectangle: false,
+			},
+			edit: {
+				featureGroup: drawnItems,
+				edit: false
+			}
+		});
+		map.addControl(drawControl);
+
+		map.on('draw:created', function (e) {
+			var type = e.layerType,
+				layer = e.layer;
+
+			if (type === 'marker') {
+				//alert(layer.getLatLng());
+		var x=String(layer.getLatLng());
+		var z=x.split(",");
+		var y=z[0].split("(");
+		lat= y[1];
+		var h=z[1].split(")");
+		var long=h[0];
+		var lt=parseFloat(lat);
+		var ln=parseFloat(long);
+		//[{x:,y:},{x:,y:},{x:,y:},{x:,y:},{x:,y:},{x:,y:}]
+		var moritoriumUNMPoly=[{x:35.06525,y:-106.58645},{x:35.10179,y:-106.58678},{x:35.10502,y:-106.58811},{x:35.1091,y:-106.58652},{x:35.10927,y:-106.55974},{x:35.06499,y:-106.5588}];
+		var moritoriumLeadCoalPoly=[{x:35.06063,y:-106.64566},{x:35.07658,y:-106.64635},{x:35.09024,y:-106.64364},{x:35.09003,y:-106.63781},{x:35.09221,y:-106.63304},{x:35.09189,y:-106.62854},{x:35.08768,y:-106.61905},{x:35.08734,y:-106.59528},{x:35.05825,y:-106.59476}];
+		var moritoriumBalloonPoly=[{x:35.15223,y:-106.63231},{x:35.16567,y:-106.62978},{x:35.17654,y:-106.6242},{x:35.18244,y:-106.61789},{x:35.18994,y:-106.61343},{x:35.20811,y:-106.6097},{x:35.21042,y:-106.60219},{x:35.20835,y:-106.59622},{x:35.20755,y:-106.58893},{x:35.20513,y:-106.5782},{x:35.20362,y:-106.57438},{x:35.20008,y:-106.57657},{x:35.18454,y:-106.57966},{x:35.17437,y:-106.58227},{x:35.15351,y:-106.5869},{x:35.15292,y:-106.5889},{x:35.15592,y:-106.59437},{x:35.14985,y:-106.61558}]
+		var moritoriumWestPoly=[{x:35.17935,y:-106.68789},{x:35.18966,y:-106.68428},{x:35.19335,y:-106.68021},{x:35.19794,y:-106.68119},{x:35.20309,y:-106.67793},{x:35.20555,y:-106.67562},{x:35.20816,y:-106.67705},{x:35.21775,y:-106.67699},{x:35.21759,y:-106.66201},{x:35.21368,y:-106.66231},{x:35.21105,y:-106.65926},{x:35.21065,y:-106.6533},{x:35.20934,y:-106.65214},{x:35.20625,y:-106.65049},{x:35.20264,y:-106.64626},{x:35.1924,y:-106.65403},{x:35.18002,y:-106.66763},{x:35.18133,y:-106.67143},{x:35.18072,y:-106.67392},{x:35.18082,y:-106.67993},{x:35.17942,y:-106.68512}]
+
+
+		if(isPointInPoly(moritoriumUNMPoly, {x:lt,y:ln}) || isPointInPoly(moritoriumLeadCoalPoly, {x:lt,y:ln}) || isPointInPoly(moritoriumBalloonPoly, {x:lt,y:ln}) ||isPointInPoly(moritoriumWestPoly, {x:lt,y:ln})){
+			alert("WARNING: You are close to a Moritorium Area. Please check the location of your permit.");
+			}
+
+
+
+
+				p=layer.getLatLng();
+				layer.bindPopup("<h3>Submit this Address?</h3><br><button onclick='submitCoords()'>Submit</button>");
+
+
+
+			}
+			if (type === 'polyline') {
+				//alert(layer.getLatLngs());
+			p=layer.getLatLngs();
+
+//start point				
+var x=String(p).split(",");
+var z=x[0].split(",");
+var y=z[0].split("(");
+var lat= y[1];
+var h=x[1].split(")");
+var long=h[0];
+var lt=parseFloat(lat);
+var ln=parseFloat(long);
+
+//endpoint
+var xend=String(p).split(",");
+var zend=xend[2].split("(");
+var latend= zend[1];
+var yend=xend[3].split(")");
+var longend=yend[0];
+var ltend=parseFloat(latend);
+var lnend=parseFloat(longend);
+
+
+if(lt>35.06513 && lt<35.10896 && ln<-106.55949 && ln>-106.58678 || ltend>35.06513 && ltend<35.10896 && lnend<-106.55949 && lnend>-106.58678)
+{alert("WARNING: You are close to a Moritorium Area. Please check the location of your permit.");}
+else if(lt>35.05817 && lt<35.09309 && ln<-106.59519 && ln>-106.64535 || ltend>35.05817 && ltend<35.09309 && lnend<-106.59519 && lnend>-106.64535)
+{alert("WARNING: You are close to a Moritorium Area. Please check the location of your permit.");}
+								
+
+
+
+		layer.bindPopup("<h3>Submit this Address?</h3><br><button onclick='submitCoords()'>Submit</button>");
+
+
+			}
+
+			drawnItems.addLayer(layer);
+		});
+
+
+
+
+
+//GEOCODING RESULT
+map.on('geosearch_showlocation', function (result) {
+	var mymarker=L.marker([result.Location.Y,result.Location.X]).addTo(map).bindPopup(result.Location.Label+"<br><B>Submit this Address?</b><br><button onclick='submit()'>Submit</button>").openPopup();
+	x=result.Location.X;
+	y=result.Location.Y;
+	addr=result.Location.Label;
+
+});
+
+
+
+
+//REVERSE GEOCODE USING DOUBLE CLICK
+
+map.on('dblclick',function(e){
+if (reverse){map.removeLayer(reverse);}
+var a=String(e.latlng);
+var b=a.split(",");
+var c=b[0].split("(");
+lat= c[1];
+var d=b[1].split(")");
+var long=d[0];
+
+var xhReq = new XMLHttpRequest();
+var u1="http://nominatim.openstreetmap.org/reverse?format=json&lat=";
+var u2=c[1];
+var u3="&lon=";
+var u4=d[0];
+var u5="&zoom=18&addressdetails=1";
+var ajaxurl=u1.concat(u2,u3,u4,u5);
+
+xhReq.open("GET", ajaxurl, false); 
+xhReq.send(null); 
+var serverResponse = xhReq.responseText;
+var d=JSON.parse(serverResponse);
+x=lat;
+y=long;
+addr=d.address.road;
+//WILL BE TIMES WHEN ROAD IS UNDEFINED AND PLACE NAME WORKS - MOSTLY WITH KNOWN LOCATIONS LIKE THE PIONEED TELEPHONE MUSEUM
+reverse = L.marker([lat,long]).addTo(map).bindPopup("<h3>"+d.address.road+"</h3><b>"+d.display_name+"</b><br><B>Submit this Address?</b><br><button onclick='submit()'>Submit</button>").openPopup();
+
+
+});
+
+
+
+
+
+//FUNCTIONS TO HANDLE SUBMITS AND POINT IN POLYGON
+
+function submit(){alert("LatLng: ("+ x+ "," +y+ ")    Address: "+ addr);
+	//opener.document.getElementById("OtherArea").value = x+","+y+","+addr;			
+	//window.close();
+}
+
+function submitCoords(){
+	alert(p);
+	//opener.document.getElementById("mapArea").value = p;			
+	//window.close();
+}
+
+
+//+ Jonas Raoni Soares Silva
+//@ http://jsfromhell.com/math/is-point-in-poly [rev. #0]
+function isPointInPoly(poly, pt){
+    for(var c = false, i = -1, l = poly.length, j = l - 1; ++i < l; j = i)
+        ((poly[i].y <= pt.y && pt.y < poly[j].y) || (poly[j].y <= pt.y && pt.y < poly[i].y))
+        && (pt.x < (poly[j].x - poly[i].x) * (pt.y - poly[i].y) / (poly[j].y - poly[i].y) + poly[i].x)
+        && (c = !c);
+    return c;
+} 
+
+
+
+
+//alert("To use this service, select a drawing tool from the top left. After placing the point or line, click it and follow the instructions to submit. If you want to select by address, type the address in the box and you will be taken to the site. If it is correct, click the submit button that pops-up. To add layers, use the layer control on the top right corner of the map. ");
+//Paul Crickard 7.2.2014
+</script>
+</body>
+</html>
+
