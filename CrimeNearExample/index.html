@@ -1,0 +1,88 @@
+<html>
+<head><title>Incidents - Last 180 Days - 1/2 Mile</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css" />
+<script src="http://api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.4.0/turf.min.js"></script>
+<style>
+
+html, body,  #map {
+        width : 100%;
+        height : 100%;
+     		   }
+
+</style>
+</head>
+<body>
+<script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>
+
+<div id="map"></div>
+
+<script>
+var g;
+var buffered
+var a;	
+var enveloped;
+
+	var map = L.map('map', {
+		center: [35.10418, -106.62987],
+		zoom:10
+	});
+
+	L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png').addTo(map);
+
+
+
+
+map.on("click",function(e){
+
+a=L.marker(e.latlng);
+b=a.toGeoJSON();
+
+
+
+
+
+
+buffered = turf.buffer(b,.05,"miles");
+var result = turf.featurecollection(buffered.features.concat(b));
+g='{"rings":'+JSON.stringify(buffered.features[0].geometry.coordinates)+'}';
+
+
+
+
+
+var params="f=json&outSR=4326&outFields=*&geometryType=esriGeometryPolygon&spatialRel=esriSpatialRelIntersects&inSR=4326&geometry="+g;
+
+var url = "http://coagisweb.cabq.gov/arcgis/rest/services/public/APD_Incidents/MapServer/0/query";
+
+http=new XMLHttpRequest();
+http.open("POST", url, true);
+http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+http.onreadystatechange = function() {//Call a function when the state changes.
+	if(http.readyState == 4 && http.status == 200) {
+		
+		var result= JSON.parse(http.responseText);
+		for(x=0;x<Object.keys(result.features).length;x++){
+			xy=result.features[x].geometry;
+		
+			navigator.vibrate(1000);
+			L.marker([result.features[x].geometry.y,result.features[x].geometry.x]).bindPopup("<h3>"+result.features[x].attributes.CVINC_TYPE+"</h3>").addTo(map);}
+	
+		
+		
+		
+
+}}
+http.send(params);
+
+
+
+
+
+});//end on
+
+
+
+</script>
+</body>
+</html>
